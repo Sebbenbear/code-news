@@ -1,54 +1,94 @@
 import React from 'react';
-import { StyleSheet, Text, View, FlatList, ActivityIndicator } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  FlatList, 
+  ActivityIndicator, 
+  SegmentedControlIOS
+} from 'react-native';
 
 export default class App extends React.Component {
 
   constructor (props) {
     super(props);
-    this.state = { isLoading: true };
+    const storyTypes = ['top', 'best', 'new', 'ask', 'show', 'job'];
+    this.state = {
+      storyTypes: storyTypes,
+      isLoading: true,
+      selectedIndex: 0
+    };
   }
 
-  async getTopStories() {
+  async getStories(storyType) {
     let data = [];
+    const numberOfItems = 10;
     try {
-      let response = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty');
+      let response = await fetch(`https://hacker-news.firebaseio.com/v0/${storyType}stories.json?print=pretty`);
       let responseJson = await response.json();
 
-      for (let i = 0; i < 20; i++) { //responseJson.length
-        let id = responseJson[i];
-        let itemResponse = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json?print=pretty`);
+      let requests = [];
+
+      for (let id of responseJson) {
+        requests.push(fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json?print=pretty`));
+
+        if (requests.length >= numberOfItems) {
+          break;
+        }
+      }
+
+      for (let request of requests) {
+        let itemResponse = await request;
         let itemResponseJson = await itemResponse.json();
         data.push(itemResponseJson);
       }
+      
       return data;
     } catch (error) {
       console.error(error);
     }
   }
 
-  async componentDidMount() {
-    let stories = await this.getTopStories();
+  async updateStories() {
+    let currentStoryType = this.state.storyTypes[this.state.selectedIndex];
+    let stories = await this.getStories(currentStoryType);
     this.setState({
       isLoading: false,
       dataSource: stories,
     });
   }
+  
+  componentDidMount() {
+    this.updateStories();
+  }
 
   render() {
     if (this.state.isLoading) {
       return(
-        <View style={{flex: 1, padding: 20}}>
+        <View style={{flex: 1, padding: 30, alignItems: 'center'}}>
           <ActivityIndicator/>
         </View>
       );
     }
 
     return (
-      <View style={styles.container}>
-        <FlatList
+      <View style={altStyles.container}>
+        <Text>{this.state.storyTypes[this.state.selectedIndex]}</Text>
+        <FlatList 
           data={this.state.dataSource}
           renderItem={({item}) => <Text>{item.score} - {item.title}</Text>}
           keyExtractor={(item, index) => `${index}`}
+        />
+        <SegmentedControlIOS
+          values={this.state.storyTypes}
+          selectedIndex={this.state.selectedIndex}
+          onChange={(event) => {
+            this.setState({
+              selectedIndex: event.nativeEvent.selectedSegmentIndex,
+              isLoading: true,
+            });
+            this.updateStories();
+          }}
         />
       </View>
     );
@@ -61,6 +101,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20
+    paddingTop: 50
+  },
+});
+
+const altStyles = StyleSheet.create({
+  container: {
+    paddingTop: 50
   },
 });
