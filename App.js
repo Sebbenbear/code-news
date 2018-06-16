@@ -49,17 +49,23 @@ export default class App extends React.Component {
     }
   }
 
-  async updateStories() {
-    let currentStoryType = this.state.storyTypes[this.state.selectedIndex];
+  async updateStories(selectedIndex) {
+    this.setState({
+      isLoading: true,
+    });
+
+    let currentStoryType = this.state.storyTypes[selectedIndex];
     let stories = await this.getStories(currentStoryType);
+
     this.setState({
       isLoading: false,
       dataSource: stories,
+      selectedIndex: selectedIndex,
     });
   }
   
   componentDidMount() {
-    this.updateStories();
+    this.updateStories(this.state.selectedIndex);
   }
 
   render() {
@@ -83,11 +89,7 @@ export default class App extends React.Component {
           values={this.state.storyTypes}
           selectedIndex={this.state.selectedIndex}
           onChange={(event) => {
-            this.setState({
-              selectedIndex: event.nativeEvent.selectedSegmentIndex,
-              isLoading: true,
-            });
-            this.updateStories();
+            this.updateStories(event.nativeEvent.selectedSegmentIndex);
           }}
         />
       </View>
